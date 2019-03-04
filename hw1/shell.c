@@ -79,8 +79,8 @@ int cmd_pwd(unused struct tokens *tokens) {
 }
 
 int cmd_cd(struct tokens *tokens) {
-    if (tokens_get_length(tokens) == 1) {
-        char *dir = tokens_get_token(tokens, 0);
+    if (tokens_get_length(tokens) == 2) {
+        char *dir = tokens_get_token(tokens, 1);
         if (chdir(dir) == 0) return 1;
         return -1;
     }
@@ -122,37 +122,66 @@ void init_shell() {
   }
 }
 
-int main(unused int argc, unused char *argv[]) {
-  init_shell();
+char **extract_argv_from_tokens(size_t token_length, struct tokens *tokens) {
+    
 
-  static char line[4096];
-  int line_num = 0;
+    int main(unused int argc, unused char *argv[])
+{
+    init_shell();
 
-  /* Please only print shell prompts when standard input is not a tty */
-  if (shell_is_interactive)
-    fprintf(stdout, "%d: ", line_num);
+    static char line[4096];
+    int line_num = 0;
 
-  while (fgets(line, 4096, stdin)) {
-    /* Split our line into words. */
-    struct tokens *tokens = tokenize(line);
+    /* Please only print shell prompts when standard input is not a tty */
+    if (shell_is_interactive)
+        fprintf(stdout, "%d: ", line_num);
 
-    /* Find which built-in function to run. */
-    int fundex = lookup(tokens_get_token(tokens, 0));
+    while (fgets(line, 4096, stdin))
+    {
+        /* Split our line into words. */
+        struct tokens *tokens = tokenize(line);
 
-    if (fundex >= 0) {
-      cmd_table[fundex].fun(tokens);
-    } else {
-      /* REPLACE this to run commands as programs. */
-      fprintf(stdout, "This shell doesn't know how to run programs.\n");
+        /* Find which built-in function to run. */
+        int fundex = lookup(tokens_get_token(tokens, 0));
+
+        if (fundex >= 0)
+        {
+            cmd_table[fundex].fun(tokens);
+        }
+        else
+        {
+            /* REPLACE this to run commands as programs. */
+            //fprintf(stdout, "This shell doesn't know how to run programs.\n");
+            int token_length = tokens_get_length(tokens);
+            if (token_length <= 0)
+                fprintf(stdout, "No command parsed.\n");
+            else
+            {
+                int pid = fork();
+                if (pid == 0)
+                {
+                    char *path_exec = tokens_get_token(tokens, 0);
+                    char *argv_exec[token_length - 1];
+                    for (int i = 1; i < token_length; i++) {
+                        argv_exec[i - 1] = tokens_get_token(tokens, i);
+                    }
+                    execv(path_exec, argv_exec);
+                }
+                else
+                {
+                    int child_status;
+                    wait(&child_status);
+                }
+            }
+        }
+
+        if (shell_is_interactive)
+            /* Please only print shell prompts when standard input is not a tty */
+            fprintf(stdout, "%d: ", ++line_num);
+
+        /* Clean up memory */
+        tokens_destroy(tokens);
     }
 
-    if (shell_is_interactive)
-      /* Please only print shell prompts when standard input is not a tty */
-      fprintf(stdout, "%d: ", ++line_num);
-
-    /* Clean up memory */
-    tokens_destroy(tokens);
-  }
-
-  return 0;
+    return 0;
 }
