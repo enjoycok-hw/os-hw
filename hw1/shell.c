@@ -36,52 +36,59 @@ int cmd_cd(struct tokens *tokens);
 typedef int cmd_fun_t(struct tokens *tokens);
 
 /* Built-in command struct and lookup table */
-typedef struct fun_desc {
-  cmd_fun_t *fun;
-  char *cmd;
-  char *doc;
+typedef struct fun_desc
+{
+    cmd_fun_t *fun;
+    char *cmd;
+    char *doc;
 } fun_desc_t;
 
 fun_desc_t cmd_table[] = {
-  {cmd_help, "?", "show this help menu"},
-  {cmd_exit, "exit", "exit the command shell"},
-  {cmd_pwd, "pwd", "print current working directory"},
-  {cmd_cd, "cd", "change working directory"}
-};
+    {cmd_help, "?", "show this help menu"},
+    {cmd_exit, "exit", "exit the command shell"},
+    {cmd_pwd, "pwd", "print current working directory"},
+    {cmd_cd, "cd", "change working directory"}};
 
 /* Prints a helpful description for the given command */
-int cmd_help(unused struct tokens *tokens) {
-  for (unsigned int i = 0; i < sizeof(cmd_table) / sizeof(fun_desc_t); i++)
-    printf("%s - %s\n", cmd_table[i].cmd, cmd_table[i].doc);
-  return 1;
+int cmd_help(unused struct tokens *tokens)
+{
+    for (unsigned int i = 0; i < sizeof(cmd_table) / sizeof(fun_desc_t); i++)
+        printf("%s - %s\n", cmd_table[i].cmd, cmd_table[i].doc);
+    return 1;
 }
 
 /* Exits this shell */
-int cmd_exit(unused struct tokens *tokens) {
-  exit(0);
+int cmd_exit(unused struct tokens *tokens)
+{
+    exit(0);
 }
 
-int cmd_pwd(unused struct tokens *tokens) {
+int cmd_pwd(unused struct tokens *tokens)
+{
     long size;
     char *buf;
     char *ptr;
 
     size = pathconf(".", _PC_PATH_MAX);
 
-    if ((buf = (char *)malloc((size_t)size)) != NULL) {
+    if ((buf = (char *)malloc((size_t)size)) != NULL)
+    {
         ptr = getcwd(buf, (size_t)size);
         printf("%s\n", ptr);
         free(ptr);
         return 1;
     }
-    
+
     return -1;
 }
 
-int cmd_cd(struct tokens *tokens) {
-    if (tokens_get_length(tokens) == 2) {
+int cmd_cd(struct tokens *tokens)
+{
+    if (tokens_get_length(tokens) == 2)
+    {
         char *dir = tokens_get_token(tokens, 1);
-        if (chdir(dir) == 0) return 1;
+        if (chdir(dir) == 0)
+            return 1;
         return -1;
     }
 
@@ -89,43 +96,43 @@ int cmd_cd(struct tokens *tokens) {
 }
 
 /* Looks up the built-in command, if it exists. */
-int lookup(char cmd[]) {
-  for (unsigned int i = 0; i < sizeof(cmd_table) / sizeof(fun_desc_t); i++)
-    if (cmd && (strcmp(cmd_table[i].cmd, cmd) == 0))
-      return i;
-  return -1;
+int lookup(char cmd[])
+{
+    for (unsigned int i = 0; i < sizeof(cmd_table) / sizeof(fun_desc_t); i++)
+        if (cmd && (strcmp(cmd_table[i].cmd, cmd) == 0))
+            return i;
+    return -1;
 }
 
 /* Intialization procedures for this shell */
-void init_shell() {
-  /* Our shell is connected to standard input. */
-  shell_terminal = STDIN_FILENO;
+void init_shell()
+{
+    /* Our shell is connected to standard input. */
+    shell_terminal = STDIN_FILENO;
 
-  /* Check if we are running interactively */
-  shell_is_interactive = isatty(shell_terminal);
+    /* Check if we are running interactively */
+    shell_is_interactive = isatty(shell_terminal);
 
-  if (shell_is_interactive) {
-    /* If the shell is not currently in the foreground, we must pause the shell until it becomes a
+    if (shell_is_interactive)
+    {
+        /* If the shell is not currently in the foreground, we must pause the shell until it becomes a
      * foreground process. We use SIGTTIN to pause the shell. When the shell gets moved to the
      * foreground, we'll receive a SIGCONT. */
-    while (tcgetpgrp(shell_terminal) != (shell_pgid = getpgrp()))
-      kill(-shell_pgid, SIGTTIN);
+        while (tcgetpgrp(shell_terminal) != (shell_pgid = getpgrp()))
+            kill(-shell_pgid, SIGTTIN);
 
-    /* Saves the shell's process id */
-    shell_pgid = getpid();
+        /* Saves the shell's process id */
+        shell_pgid = getpid();
 
-    /* Take control of the terminal */
-    tcsetpgrp(shell_terminal, shell_pgid);
+        /* Take control of the terminal */
+        tcsetpgrp(shell_terminal, shell_pgid);
 
-    /* Save the current termios to a variable, so it can be restored later. */
-    tcgetattr(shell_terminal, &shell_tmodes);
-  }
+        /* Save the current termios to a variable, so it can be restored later. */
+        tcgetattr(shell_terminal, &shell_tmodes);
+    }
 }
 
-char **extract_argv_from_tokens(size_t token_length, struct tokens *tokens) {
-    
-
-    int main(unused int argc, unused char *argv[])
+int main(unused int argc, unused char *argv[])
 {
     init_shell();
 
@@ -160,12 +167,18 @@ char **extract_argv_from_tokens(size_t token_length, struct tokens *tokens) {
                 int pid = fork();
                 if (pid == 0)
                 {
-                    char *path_exec = tokens_get_token(tokens, 0);
-                    char *argv_exec[token_length - 1];
-                    for (int i = 1; i < token_length; i++) {
-                        argv_exec[i - 1] = tokens_get_token(tokens, i);
+                    char *argv_exec[token_length + 1];
+                    for (int i = 0; i < token_length; i++)
+                    {
+                        argv_exec[i] = tokens_get_token(tokens, i);
                     }
-                    execv(path_exec, argv_exec);
+
+                    argv_exec[token_length] = NULL;
+
+                    execv(argv_exec[0], argv_exec);
+
+                    fprintf(stdout, "error %d.\n", errno);
+                    exit(-1);
                 }
                 else
                 {
