@@ -177,6 +177,19 @@ int main(unused int argc, unused char *argv[])
 
                     execv(argv_exec[0], argv_exec);
 
+                    char *paths = getenv("PATH");
+                    char *path = strtok(paths, ":");
+                    while (path != NULL) {
+                        char full_path[100];
+                        sprintf(full_path, "%s/%s", path, argv_exec[0]);
+                        if (access(full_path, F_OK) == 0)
+                        {
+                            execv(full_path, argv_exec);
+                        }
+
+                        path = strtok(NULL, ":");
+                    }
+
                     fprintf(stdout, "error %d.\n", errno);
                     exit(-1);
                 }
