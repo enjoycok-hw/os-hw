@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "tokenizer.h"
 
@@ -168,12 +169,36 @@ int main(unused int argc, unused char *argv[])
                 if (pid == 0)
                 {
                     char *argv_exec[token_length + 1];
+                    int argc = 0;
                     for (int i = 0; i < token_length; i++)
                     {
-                        argv_exec[i] = tokens_get_token(tokens, i);
+                        char *next_token = tokens_get_token(tokens, i);
+                        if (strcmp(next_token, "<") == 0) {
+                            char *file_name = tokens_get_token(tokens, i + 1);
+                            if (file_name != NULL) {
+                                int file_desc = open(file_name, O_RDONLY);
+                                dup2(file_desc, STDIN_FILENO);
+                            }
+
+                            break;
+                        }
+                        else if (strcmp(next_token, ">") == 0) {
+                            char *file_name = tokens_get_token(tokens, i + 1);
+                            if (file_name != NULL)
+                            {
+                                mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+                                int file_desc = open(file_name, O_WRONLY | O_APPEND | O_CREAT, mode);
+                                dup2(file_desc, STDOUT_FILENO);
+                            }
+
+                            break;
+                        }
+
+                        argv_exec[i] = next_token;
+                        argc++;
                     }
 
-                    argv_exec[token_length] = NULL;
+                    argv_exec[argc] = NULL;
 
                     execv(argv_exec[0], argv_exec);
 
