@@ -152,6 +152,8 @@ int main(unused int argc, unused char *argv[])
         /* Find which built-in function to run. */
         int fundex = lookup(tokens_get_token(tokens, 0));
 
+        int foreground_run_mode = 1;
+
         if (fundex >= 0)
         {
             cmd_table[fundex].fun(tokens);
@@ -165,6 +167,11 @@ int main(unused int argc, unused char *argv[])
                 fprintf(stdout, "No command parsed.\n");
             else
             {
+                if (strcmp(tokens_get_token(tokens, token_length - 1), "&") == 0) {
+                    foreground_run_mode = 0;
+                    token_length --;
+                }
+
                 int pid = fork();
                 if (pid == 0)
                 {
@@ -218,7 +225,7 @@ int main(unused int argc, unused char *argv[])
                     fprintf(stdout, "error %d.\n", errno);
                     exit(-1);
                 }
-                else
+                else if (foreground_run_mode)
                 {
                     int child_status;
                     wait(&child_status);
